@@ -1,0 +1,244 @@
+.li-app {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 320px;
+	gap: 20px;
+	margin-top: 16px;
+	align-items: start;
+}
+
+.li-stage {
+	min-width: 0;
+}
+
+.li-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 8px;
+}
+
+.li-toolbar .button.active {
+	background: #2271b1;
+	border-color: #2271b1;
+	color: #fff;
+}
+
+.li-spinner {
+	color: #646970;
+	font-style: italic;
+}
+
+.li-viewport {
+	max-height: calc(100vh - 200px);
+	overflow: auto;
+	border: 1px solid #c3c4c7;
+}
+
+/* Each side gets its own checkerboard, so transparency in the original does
+   not reveal the compressed image underneath. */
+.li-viewport,
+.li-compare .li-before {
+	background:
+		repeating-conic-gradient(#e0e0e0 0% 25%, #fff 0% 50%) 0 0 / 20px 20px;
+}
+
+.li-compare {
+	position: relative;
+	cursor: ew-resize;
+	user-select: none;
+	touch-action: none;
+}
+
+.li-compare img {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+.li-compare.is-actual img {
+	image-rendering: pixelated;
+}
+
+.li-compare .li-before {
+	position: absolute;
+	inset: 0;
+	clip-path: inset(0 calc(100% - var(--split)) 0 0);
+}
+
+.li-divider {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: var(--split);
+	width: 2px;
+	margin-left: -1px;
+	background: #fff;
+	box-shadow: 0 0 0 1px rgb(0 0 0 / 0.4);
+	pointer-events: none;
+}
+
+.li-tag {
+	position: absolute;
+	top: 8px;
+	padding: 2px 8px;
+	border-radius: 3px;
+	background: rgb(0 0 0 / 0.65);
+	color: #fff;
+	font-size: 12px;
+	pointer-events: none;
+}
+
+.li-tag-before {
+	left: 8px;
+}
+
+.li-tag-after {
+	right: 8px;
+}
+
+.li-panel {
+	position: sticky;
+	top: 48px;
+	padding: 16px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+}
+
+.li-panel section + *,
+.li-controls + * {
+	margin-top: 12px;
+}
+
+.li-row {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	align-items: center;
+	gap: 4px 8px;
+	margin: 0 0 10px;
+}
+
+.li-range {
+	grid-template-columns: 1fr 3em;
+}
+
+.li-range > span {
+	grid-column: 1 / -1;
+}
+
+.li-range input {
+	width: 100%;
+}
+
+.li-range output {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+.li-check {
+	grid-template-columns: auto 1fr auto;
+}
+
+.li-row select {
+	max-width: 190px;
+}
+
+.li-tip {
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	margin-left: 4px;
+	border-radius: 50%;
+	background: #dcdcde;
+	color: #50575e;
+	font-size: 11px;
+	line-height: 16px;
+	text-align: center;
+	cursor: help;
+}
+
+.li-section {
+	margin: 0 -16px;
+	padding: 8px 16px;
+	border-top: 1px solid #dcdcde;
+}
+
+.li-section:last-child {
+	border-bottom: 1px solid #dcdcde;
+}
+
+.li-section summary {
+	margin: 0 0 0 -2px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.li-section[open] summary {
+	margin-bottom: 10px;
+}
+
+.li-reset {
+	margin-top: 8px !important;
+}
+
+.li-stats {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 4px 12px;
+	margin: 16px 0;
+	padding-top: 12px;
+	border-top: 1px solid #dcdcde;
+}
+
+.li-stats dt {
+	color: #646970;
+}
+
+.li-stats dd {
+	margin: 0;
+}
+
+.li-good {
+	color: #008a20;
+}
+
+.li-bad {
+	color: #d63638;
+}
+
+.li-muted {
+	color: #646970;
+}
+
+.li-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.li-actions .description {
+	flex-basis: 100%;
+	margin: 0;
+}
+
+.li-status {
+	flex-basis: 100%;
+	margin: 4px 0 0;
+}
+
+.li-status.is-error {
+	color: #d63638;
+}
+
+.li-status.is-success {
+	color: #008a20;
+}
+
+@media (max-width: 960px) {
+	.li-app {
+		grid-template-columns: 1fr;
+	}
+
+	.li-panel {
+		position: static;
+	}
+}
