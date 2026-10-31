@@ -51,8 +51,28 @@ Every `v*` tag builds `lean-images.zip` and attaches it to a GitHub release.
 
 The plugin's `Update URI` points at this repository, so WordPress checks its
 GitHub releases instead of WordPress.org and offers updates on the Plugins
-screen as usual. GitHub only answers that check for **public** repositories:
-while the repository is private, download new releases by hand.
+screen as usual.
+
+### Updates from a private repository
+
+GitHub only shows a private repository's releases to someone with access, so
+each site needs a token:
+
+1. GitHub → Settings → Developer settings → Personal access tokens →
+   Fine-grained tokens → Generate new token.
+2. Repository access: **Only select repositories** → `lean-images`.
+   Permissions: **Contents: Read-only**. Nothing else.
+3. Add it to `wp-config.php`, above the "stop editing" line:
+
+   ```php
+   define( 'LEAN_IMAGES_GITHUB_TOKEN', 'github_pat_...' );
+   ```
+
+The token only goes to `api.github.com`, never into the plugin's files or the
+download links WordPress shows. When it expires, updates stop showing up until
+you add a new one. A public repository needs no token.
+
+Sites still on 0.1.0 need one manual install of 0.2.0 or later first.
 
 ### Releasing
 
