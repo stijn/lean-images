@@ -49,7 +49,8 @@ not accept `.jxl` uploads and most browsers cannot show it).
 
 Every `v*` tag builds `lean-images.zip` and attaches it to a GitHub release.
 
-1. Download `lean-images.zip` from the latest release.
+1. Download `lean-images.zip` from the latest release, not "Source code":
+   that has no built editor.
 2. Plugins → Add New → Upload Plugin.
 
 The plugin's `Update URI` points at this repository, so WordPress checks its

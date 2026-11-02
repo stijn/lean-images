@@ -7,6 +7,23 @@
 
 defined( 'ABSPATH' ) || exit;
 
+// The "Source code" downloads on a release page have no build folder, so the
+// editor cannot load. Point to the zip that has it.
+add_action(
+	'admin_notices',
+	function () {
+		if ( file_exists( dirname( LEAN_IMAGES_FILE ) . '/build/main.js' ) || ! current_user_can( 'activate_plugins' ) ) {
+			return;
+		}
+		printf(
+			'<div class="notice notice-error"><p>%s <a href="%s">%s</a></p></div>',
+			esc_html__( 'Lean Images is missing its built editor: this copy is the source code. Install lean-images.zip from the latest release instead.', 'lean-images' ),
+			esc_url( 'https://github.com/' . LEAN_IMAGES_REPOSITORY . '/releases/latest' ),
+			esc_html__( 'Latest release', 'lean-images' )
+		);
+	}
+);
+
 add_action(
 	'admin_menu',
 	function () {

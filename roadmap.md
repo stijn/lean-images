@@ -5,9 +5,19 @@ next. Add each feature here when it lands, and each release before you tag it.
 
 ## Next
 
-- Install 0.3.0 by hand on each site. Later releases install themselves.
+- Install 0.3.1 by hand on each site. Later releases install themselves.
 - Hear back from compress-or-die (OMCC) about the plugin. The e-mail and the
   r/CompressOrDie post went out on 31 October 2026.
+
+## 0.3.1 (2 November 2026)
+
+- A second copy of Lean Images, for example the "Source code" download from
+  a release page, no longer crashes activation. The new copy stays idle and
+  the Plugins screen names the folder to delete.
+- A copy without the built editor (the source code) says so and links to
+  `lean-images.zip`.
+- Other plugins can apply the update filters with fewer arguments than
+  WordPress does without causing a fatal error.
 
 ## 0.3.0 (2 November 2026)
 

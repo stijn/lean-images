@@ -99,7 +99,7 @@ function lean_images_release_package( $release ) {
 
 add_filter(
 	'update_plugins_github.com',
-	function ( $update, $plugin_data, $plugin_file ) {
+	function ( $update, $plugin_data = null, $plugin_file = null ) {
 		if ( plugin_basename( LEAN_IMAGES_FILE ) !== $plugin_file ) {
 			return $update;
 		}
@@ -119,10 +119,11 @@ add_filter(
 );
 
 // Auto-update this plugin only. The Plugins screen then shows "Auto-updates
-// enabled" instead of a toggle.
+// enabled" instead of a toggle. Other plugins apply these filters too, not
+// always with every argument, so the extra arguments are optional.
 add_filter(
 	'auto_update_plugin',
-	function ( $update, $item ) {
+	function ( $update, $item = null ) {
 		if ( isset( $item->plugin ) && plugin_basename( LEAN_IMAGES_FILE ) === $item->plugin ) {
 			return true;
 		}
@@ -137,7 +138,7 @@ add_filter(
 // token, so WordPress cannot follow that redirect by itself.
 add_filter(
 	'upgrader_pre_download',
-	function ( $reply, $package ) {
+	function ( $reply, $package = null ) {
 		$prefix = 'https://api.github.com/repos/' . LEAN_IMAGES_REPOSITORY . '/releases/assets/';
 		if ( false !== $reply || ! is_string( $package ) || 0 !== strpos( $package, $prefix ) ) {
 			return $reply;
@@ -182,7 +183,7 @@ add_filter(
 // "View details" in the update notice.
 add_filter(
 	'plugins_api',
-	function ( $result, $action, $args ) {
+	function ( $result, $action = null, $args = null ) {
 		if ( 'plugin_information' !== $action || empty( $args->slug ) || 'lean-images' !== $args->slug ) {
 			return $result;
 		}
