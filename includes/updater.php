@@ -4,7 +4,8 @@
  *
  * The plugin header's "Update URI" points at github.com, so WordPress asks the
  * update_plugins_github.com filter instead of WordPress.org. Each release must
- * carry a lean-images.zip asset (the release workflow builds it).
+ * carry a lean-images.zip asset (the release workflow builds it). WordPress
+ * installs new releases by itself, like other auto-updated plugins.
  *
  * A private repository only answers with a token, set in wp-config.php:
  *
@@ -115,6 +116,20 @@ add_filter(
 	},
 	10,
 	3
+);
+
+// Auto-update this plugin only. The Plugins screen then shows "Auto-updates
+// enabled" instead of a toggle.
+add_filter(
+	'auto_update_plugin',
+	function ( $update, $item ) {
+		if ( isset( $item->plugin ) && plugin_basename( LEAN_IMAGES_FILE ) === $item->plugin ) {
+			return true;
+		}
+		return $update;
+	},
+	10,
+	2
 );
 
 // A private asset only downloads through the API with the token. GitHub then

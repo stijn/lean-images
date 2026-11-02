@@ -50,8 +50,12 @@ Every `v*` tag builds `lean-images.zip` and attaches it to a GitHub release.
 2. Plugins → Add New → Upload Plugin.
 
 The plugin's `Update URI` points at this repository, so WordPress checks its
-GitHub releases instead of WordPress.org and offers updates on the Plugins
-screen as usual.
+GitHub releases instead of WordPress.org. Auto-updates are always on: the
+Plugins screen shows "Auto-updates enabled", and WordPress installs a new
+release by itself, usually within 12 hours (WP-Cron checks twice a day).
+
+Sites on 0.2.0 or older don't auto-update yet: install 0.3.0 once by hand,
+and every later release arrives on its own.
 
 ### Updates from a private repository
 
@@ -72,12 +76,10 @@ The token only goes to `api.github.com`, never into the plugin's files or the
 download links WordPress shows. When it expires, updates stop showing up until
 you add a new one. A public repository needs no token.
 
-Sites still on 0.1.0 need one manual install of 0.2.0 or later first.
-
 ### Releasing
 
 1. Bump `Version:` in `lean-images.php` (and `version` in `package.json`).
-2. Commit, then `git tag v0.2.0 && git push --tags`.
+2. Commit, then tag the new version, e.g. `git tag v0.4.0 && git push --tags`.
 
 The workflow refuses a tag that does not match the plugin header.
 
