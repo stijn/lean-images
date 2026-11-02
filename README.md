@@ -5,6 +5,9 @@ Library: pick an image, tune the encoder with a live before/after preview, and
 save. All encoding runs in the browser (WebAssembly); the server only receives
 the finished files.
 
+[roadmap.md](roadmap.md) lists every release, what it added and what comes
+next.
+
 ## What it does
 
 - **Media → Library → Compress** (list view row action, or the button in the
@@ -79,7 +82,8 @@ you add a new one. A public repository needs no token.
 ### Releasing
 
 1. Bump `Version:` in `lean-images.php` (and `version` in `package.json`).
-2. Commit, then tag the new version, e.g. `git tag v0.4.0 && git push --tags`.
+2. Add the release to `roadmap.md`, with the date and what it adds.
+3. Commit, then tag the new version, e.g. `git tag v0.4.0 && git push --tags`.
 
 The workflow refuses a tag that does not match the plugin header.
 
