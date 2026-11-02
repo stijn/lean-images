@@ -62,8 +62,9 @@ and every later release arrives on its own.
 
 ### Updates from a private repository
 
-GitHub only shows a private repository's releases to someone with access, so
-each site needs a token:
+The repository is public, so sites need no token. If it ever goes private
+again, GitHub only shows its releases to someone with access, and each site
+needs a token:
 
 1. GitHub → Settings → Developer settings → Personal access tokens →
    Fine-grained tokens → Generate new token.

@@ -5,11 +5,9 @@ next. Add each feature here when it lands, and each release before you tag it.
 
 ## Next
 
-- Install 0.3.0 by hand on each site, with `LEAN_IMAGES_GITHUB_TOKEN` in
-  `wp-config.php`. Later releases install themselves.
-- Hear back from compress-or-die (OMCC) about the plugin: the e-mail to
-  moin@omcc.de and the r/CompressOrDie post both went out on 31 October 2026.
-  The repository stays private until they reply.
+- Install 0.3.0 by hand on each site. Later releases install themselves.
+- Hear back from compress-or-die (OMCC) about the plugin. The e-mail and the
+  r/CompressOrDie post went out on 31 October 2026.
 
 ## 0.3.0 (2 November 2026)
 
@@ -29,6 +27,7 @@ next. Add each feature here when it lands, and each release before you tag it.
   download links or the plugin's files.
 - WordPress shows a clear error when GitHub refuses the download, pointing at
   the token.
+- The repository went public on 2 November 2026, so sites need no token now.
 
 ## 0.1.0 (31 October 2026)
 
