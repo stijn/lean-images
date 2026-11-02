@@ -10,6 +10,12 @@ next. Add each feature here when it lands, and each release before you tag it.
 - Hear back from compress-or-die (OMCC) about the plugin. The e-mail and the
   r/CompressOrDie post went out on 31 October 2026.
 
+## 0.3.3 (2 November 2026)
+
+- "Check again" on Dashboard → Updates finds a new release straight away.
+  WordPress ran its own update check before Lean Images cleared its cached
+  answer, so a new release could stay hidden for up to three hours.
+
 ## 0.3.2 (2 November 2026)
 
 - The editor loads the original on sites whose WordPress address is stored

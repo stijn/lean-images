@@ -204,7 +204,9 @@ add_filter(
 	3
 );
 
-// "Check again" on Dashboard → Updates should really ask GitHub again.
+// "Check again" on Dashboard → Updates should really ask GitHub again. Core
+// runs its own plugin update check on this hook at priority 10, so the cache
+// has to go first.
 add_action(
 	'load-update-core.php',
 	function () {
@@ -212,5 +214,6 @@ add_action(
 		if ( isset( $_GET['force-check'] ) ) {
 			delete_site_transient( 'lean_images_release' );
 		}
-	}
+	},
+	9
 );
