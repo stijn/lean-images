@@ -73,8 +73,20 @@ async function decode( space ) {
 		context.drawImage( bitmap, 0, 0 );
 		bitmap.close();
 		sources[ space ] = context.getImageData( 0, 0, canvas.width, canvas.height );
+		// A JPEG has no alpha channel, but Safari's colour conversion rounds
+		// some pixels to alpha 254. Left alone, that adds a needless alpha
+		// channel to WebP, AVIF and PNG output.
+		if ( blob.type === 'image/jpeg' ) {
+			makeOpaque( sources[ space ].data );
+		}
 	}
 	return sources[ space ];
+}
+
+function makeOpaque( data ) {
+	for ( let i = 3; i < data.length; i += 4 ) {
+		data[ i ] = 255;
+	}
 }
 
 // Preview re-encodes at the same dimensions on every settings change, so the

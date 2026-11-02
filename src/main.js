@@ -152,6 +152,12 @@ ui.compare = h(
 	h( 'span', { class: 'li-tag li-tag-after' }, 'Compressed' )
 );
 
+// Reserve the image's shape, so the original shows while the first
+// compressed version is still on its way.
+if ( config.current.width && config.current.height ) {
+	ui.compare.style.aspectRatio = `${ config.current.width } / ${ config.current.height }`;
+}
+
 const zoomButtons = [ [ 'fit', 'Fit' ], [ 'actual', '100%' ] ].map( ( [ value, label ] ) =>
 	h( 'button', { type: 'button', class: 'button', 'data-zoom': value, onclick: () => setZoom( value ) }, label )
 );
@@ -201,17 +207,20 @@ function renderControls() {
 		? METADATA_CONTROLS.filter( ( control ) => state.source.metadata[ control.key ] )
 		: [];
 
+	// replaceChildren() would print a null as the text "null".
 	ui.controls.replaceChildren(
-		...renderControlList( basic, options ),
-		state.format === 'image/jpeg' && state.source?.hasAlpha
-			? h( 'label', { class: 'li-row' },
-				h( 'span', {}, 'Background for transparency' ),
-				h( 'input', { type: 'color', value: state.background, onchange: ( e ) => { state.background = e.target.value; schedule(); } } )
-			)
-			: null,
-		section( 'advanced', `More ${ format.label } settings`, renderControlList( advanced, options ) ),
-		section( 'resize', 'Resizing', renderControlList( RESIZE_CONTROLS, state.resize ) ),
-		metadata.length ? section( 'metadata', 'Keep metadata', renderControlList( metadata, state.keep ) ) : null
+		...[
+			...renderControlList( basic, options ),
+			state.format === 'image/jpeg' && state.source?.hasAlpha
+				? h( 'label', { class: 'li-row' },
+					h( 'span', {}, 'Background for transparency' ),
+					h( 'input', { type: 'color', value: state.background, onchange: ( e ) => { state.background = e.target.value; schedule(); } } )
+				)
+				: null,
+			section( 'advanced', `More ${ format.label } settings`, renderControlList( advanced, options ) ),
+			section( 'resize', 'Resizing', renderControlList( RESIZE_CONTROLS, state.resize ) ),
+			metadata.length ? section( 'metadata', 'Keep metadata', renderControlList( metadata, state.keep ) ) : null,
+		].filter( ( child ) => child !== null )
 	);
 }
 

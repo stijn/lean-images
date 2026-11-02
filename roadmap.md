@@ -5,9 +5,25 @@ next. Add each feature here when it lands, and each release before you tag it.
 
 ## Next
 
-- Install 0.3.1 by hand on each site. Later releases install themselves.
+- Install Lean Images by hand once on each site that does not have it yet
+  (aardling.com does). Later releases install themselves.
 - Hear back from compress-or-die (OMCC) about the plugin. The e-mail and the
   r/CompressOrDie post went out on 31 October 2026.
+
+## 0.3.2 (2 November 2026)
+
+- The editor loads the original on sites whose WordPress address is stored
+  as `http://`. WordPress handed the https admin an `http://` link to the
+  upload, which browsers refuse to download from a secure page ("Load
+  failed" in Safari, "Failed to fetch" in Chrome). The link now follows the
+  admin's https.
+- The original shows straight away, before the first compressed version is
+  ready.
+- No more stray "null" labels in the settings panel.
+- Safari no longer treats a JPEG as transparent. Its colour conversion
+  rounds some pixels to alpha 254, which showed a needless "Background for
+  transparency" option and added an alpha channel to WebP, AVIF and PNG
+  output.
 
 ## 0.3.1 (2 November 2026)
 

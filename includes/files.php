@@ -89,13 +89,18 @@ function lean_images_source_url( $attachment_id ) {
 
 	// Big uploads keep their pre-scaling original, which a replacement never touches.
 	if ( ! empty( $meta['original_image'] ) ) {
-		return wp_get_original_image_url( $attachment_id );
-	}
-	if ( $backup ) {
+		$url = wp_get_original_image_url( $attachment_id );
+	} elseif ( $backup ) {
 		$location = lean_images_backup_location( $attachment_id );
-		return $location['url'] . '/' . rawurlencode( $backup['files'][0] );
+		$url      = $location['url'] . '/' . rawurlencode( $backup['files'][0] );
+	} else {
+		$url = wp_get_attachment_url( $attachment_id );
 	}
-	return wp_get_attachment_url( $attachment_id );
+
+	// WordPress only switches upload URLs to https on the front end. A site
+	// whose address is stored as http:// would hand the https admin an http
+	// URL, and browsers refuse to download that from a secure page.
+	return set_url_scheme( $url );
 }
 
 /**
