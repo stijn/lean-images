@@ -37,6 +37,10 @@ add_action(
 						'type'    => 'string',
 						'default' => '{}',
 					),
+					'files' => array(
+						'type'    => 'string',
+						'default' => '[]',
+					),
 				),
 			)
 		);
@@ -70,14 +74,19 @@ function lean_images_rest_permission( WP_REST_Request $request ) {
 /**
  * POST /lean-images/v1/attachments/{id}/save
  *
- * @param WP_REST_Request $request Request with `full` and `sub_N` files.
+ * A new image arrives as `full` and `sub_N` files. A replacement arrives as
+ * `file_N` files, one for each of lean_images_replace_targets().
+ *
+ * @param WP_REST_Request $request Request.
  * @return array|WP_Error
  */
 function lean_images_rest_save( WP_REST_Request $request ) {
 	$attachment_id = (int) $request['id'];
-	$mode          = $request['mode'];
 	$files         = $request->get_file_params();
-	$size_names    = json_decode( $request['sizes'], true );
+	if ( 'replace' === $request['mode'] ) {
+		return lean_images_replace_files( $attachment_id, $files, json_decode( $request['files'], true ) );
+	}
+	$size_names = json_decode( $request['sizes'], true );
 
 	if ( empty( $files['full'] ) ) {
 		return new WP_Error( 'lean_images_no_file', __( 'No image was uploaded.', 'lean-images' ), array( 'status' => 400 ) );
@@ -87,11 +96,7 @@ function lean_images_rest_save( WP_REST_Request $request ) {
 		return $full;
 	}
 
-	$meta    = wp_get_attachment_metadata( $attachment_id );
-	$allowed = 'replace' === $mode
-		? array_keys( isset( $meta['sizes'] ) ? $meta['sizes'] : array() )
-		: array_keys( wp_get_registered_image_subsizes() );
-
+	$allowed  = array_keys( wp_get_registered_image_subsizes() );
 	$subsizes = array();
 	foreach ( is_array( $size_names ) ? $size_names : array() as $field => $name ) {
 		if ( ! preg_match( '/^sub_\d+$/', $field ) || empty( $files[ $field ] ) || ! in_array( $name, $allowed, true ) ) {
@@ -104,9 +109,7 @@ function lean_images_rest_save( WP_REST_Request $request ) {
 		$subsizes[ $name ] = $checked;
 	}
 
-	return 'replace' === $mode
-		? lean_images_replace_files( $attachment_id, $full, $subsizes )
-		: lean_images_create_attachment( $attachment_id, $full, $subsizes );
+	return lean_images_create_attachment( $attachment_id, $full, $subsizes );
 }
 
 /**
@@ -234,6 +237,7 @@ function lean_images_create_attachment( $source_id, $full, $subsizes ) {
 			'image_meta' => $image_meta,
 		)
 	);
+	lean_images_remember_files( $attachment_id );
 
 	return array(
 		'id'          => $attachment_id,
@@ -246,32 +250,35 @@ function lean_images_create_attachment( $source_id, $full, $subsizes ) {
 
 /**
  * Overwrite the existing files in place, so every URL in existing content
- * keeps working. The previous files are backed up first.
+ * keeps working. Each file keeps its format and dimensions. The previous
+ * files are backed up first.
  *
- * @param int   $attachment_id Attachment ID.
- * @param array $full          Checked full-size upload.
- * @param array $subsizes      Checked sub-size uploads keyed by size name.
+ * @param int        $attachment_id Attachment ID.
+ * @param array      $files         Uploaded `file_N` entries from $_FILES.
+ * @param array|null $expected      Base names of the files the editor encoded for.
  * @return array|WP_Error
  */
-function lean_images_replace_files( $attachment_id, $full, $subsizes ) {
-	$file = get_attached_file( $attachment_id );
-	$meta = wp_get_attachment_metadata( $attachment_id );
-	$mime = get_post_mime_type( $attachment_id );
-
-	if ( $full['mime'] !== $mime ) {
-		return new WP_Error( 'lean_images_format_changed', __( 'Replacing keeps the file format. Save as a new image to change it.', 'lean-images' ), array( 'status' => 400 ) );
-	}
-	if ( (int) $meta['width'] !== $full['width'] || (int) $meta['height'] !== $full['height'] ) {
-		return new WP_Error( 'lean_images_size_changed', __( 'Replacing keeps the image dimensions.', 'lean-images' ), array( 'status' => 400 ) );
+function lean_images_replace_files( $attachment_id, $files, $expected ) {
+	$targets = lean_images_replace_targets( $attachment_id );
+	if ( wp_list_pluck( $targets, 'file' ) !== $expected ) {
+		return new WP_Error( 'lean_images_changed', __( 'This image changed since the page loaded. Reload the page and try again.', 'lean-images' ), array( 'status' => 409 ) );
 	}
 
-	$targets = array();
-	foreach ( $subsizes as $size_name => $sub ) {
-		$existing = $meta['sizes'][ $size_name ];
-		if ( (int) $existing['width'] !== $sub['width'] || (int) $existing['height'] !== $sub['height'] ) {
-			return new WP_Error( 'lean_images_size_changed', __( 'A smaller size does not match the existing file.', 'lean-images' ), array( 'status' => 400 ) );
+	$dir     = dirname( get_attached_file( $attachment_id ) );
+	$uploads = array();
+	foreach ( $targets as $index => $target ) {
+		$field = "file_{$index}";
+		if ( empty( $files[ $field ] ) ) {
+			return new WP_Error( 'lean_images_no_file', __( 'Not every size of the image was uploaded.', 'lean-images' ), array( 'status' => 400 ) );
 		}
-		$targets[ $size_name ] = path_join( dirname( $file ), $existing['file'] );
+		$upload = lean_images_check_upload( $files[ $field ], $target['mime'] );
+		if ( is_wp_error( $upload ) ) {
+			return $upload;
+		}
+		if ( $upload['width'] !== $target['width'] || $upload['height'] !== $target['height'] ) {
+			return new WP_Error( 'lean_images_size_changed', __( 'Replacing keeps the dimensions of every file.', 'lean-images' ), array( 'status' => 400 ) );
+		}
+		$uploads[ $index ] = $upload;
 	}
 
 	$backup = lean_images_backup( $attachment_id );
@@ -279,24 +286,47 @@ function lean_images_replace_files( $attachment_id, $full, $subsizes ) {
 		return $backup;
 	}
 
-	if ( ! lean_images_move_upload( $full['tmp'], $file ) ) {
-		return new WP_Error( 'lean_images_write_failed', __( 'Could not overwrite the image. Restore the backup if it looks broken.', 'lean-images' ), array( 'status' => 500 ) );
-	}
-	$meta['filesize'] = wp_filesize( $file );
-
-	foreach ( $targets as $size_name => $path ) {
-		if ( ! lean_images_move_upload( $subsizes[ $size_name ]['tmp'], $path ) ) {
+	$meta = wp_get_attachment_metadata( $attachment_id );
+	foreach ( $targets as $index => $target ) {
+		$path = path_join( $dir, $target['file'] );
+		if ( ! lean_images_move_upload( $uploads[ $index ]['tmp'], $path ) ) {
 			wp_update_attachment_metadata( $attachment_id, $meta );
-			return new WP_Error( 'lean_images_write_failed', __( 'Could not overwrite every size. Restore the backup if it looks broken.', 'lean-images' ), array( 'status' => 500 ) );
+			return new WP_Error( 'lean_images_write_failed', __( 'Could not overwrite every file. Restore the backup if the image looks broken.', 'lean-images' ), array( 'status' => 500 ) );
 		}
-		$meta['sizes'][ $size_name ]['filesize'] = wp_filesize( $path );
+		$meta = lean_images_set_filesize( $meta, $target, wp_filesize( $path ) );
 	}
 
 	wp_update_attachment_metadata( $attachment_id, $meta );
+	lean_images_remember_files( $attachment_id );
 
 	return array(
 		'id'       => $attachment_id,
 		'url'      => wp_get_attachment_url( $attachment_id ),
 		'filesize' => $meta['filesize'],
 	);
+}
+
+/**
+ * Record a new file size wherever the metadata describes that file.
+ *
+ * @param array $meta     Attachment metadata.
+ * @param array $target   One of lean_images_replace_targets().
+ * @param int   $filesize Bytes.
+ * @return array Metadata.
+ */
+function lean_images_set_filesize( $meta, $target, $filesize ) {
+	$entry = 'full' === $target['size'] ? $meta : $meta['sizes'][ $target['size'] ];
+	if ( wp_basename( $entry['file'] ) === $target['file'] ) {
+		$entry['filesize'] = $filesize;
+	}
+	foreach ( isset( $entry['sources'] ) ? $entry['sources'] : array() as $mime => $source ) {
+		if ( wp_basename( $source['file'] ) === $target['file'] ) {
+			$entry['sources'][ $mime ]['filesize'] = $filesize;
+		}
+	}
+	if ( 'full' === $target['size'] ) {
+		return $entry;
+	}
+	$meta['sizes'][ $target['size'] ] = $entry;
+	return $meta;
 }

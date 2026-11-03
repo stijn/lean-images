@@ -8,6 +8,7 @@
 defined( 'ABSPATH' ) || exit;
 
 const LEAN_IMAGES_BACKUP_META = '_lean_images_backup';
+const LEAN_IMAGES_SAVED_META  = '_lean_images_saved';
 
 /**
  * Output formats the browser can encode and this site accepts as uploads.
@@ -62,6 +63,51 @@ function lean_images_page_url( $attachment_id ) {
 }
 
 /**
+ * Every file WordPress serves for an attachment, in the format of that file:
+ * the full size, each sub-size, and the WebP or AVIF copies that plugins such
+ * as Modern Image Formats list under "sources". Sites that save sub-sizes in
+ * another format than the upload (the image_editor_output_format filter) mix
+ * formats too. Replacing overwrites exactly these files.
+ *
+ * @param int $attachment_id Attachment ID.
+ * @return array[] Full size first. Each has size (a size name or "full"), file
+ *                 (base name), width, height and mime.
+ */
+function lean_images_replace_targets( $attachment_id ) {
+	$meta    = wp_get_attachment_metadata( $attachment_id );
+	$entries = array(
+		'full' => array(
+			'file'    => wp_basename( get_attached_file( $attachment_id ) ),
+			'width'   => $meta['width'],
+			'height'  => $meta['height'],
+			'sources' => isset( $meta['sources'] ) ? $meta['sources'] : array(),
+		),
+	) + ( isset( $meta['sizes'] ) ? $meta['sizes'] : array() );
+
+	$targets = array();
+	foreach ( $entries as $size => $entry ) {
+		$files = array( $entry['file'] => wp_check_filetype( $entry['file'] )['type'] );
+		foreach ( isset( $entry['sources'] ) ? $entry['sources'] : array() as $mime => $source ) {
+			$files[ wp_basename( $source['file'] ) ] = $mime;
+		}
+		foreach ( $files as $file => $mime ) {
+			// Two sizes can share a file. Formats the browser cannot encode stay as they are.
+			if ( isset( $targets[ $file ] ) || ! in_array( $mime, lean_images_formats(), true ) ) {
+				continue;
+			}
+			$targets[ $file ] = array(
+				'size'   => $size,
+				'file'   => $file,
+				'width'  => (int) $entry['width'],
+				'height' => (int) $entry['height'],
+				'mime'   => $mime,
+			);
+		}
+	}
+	return array_values( $targets );
+}
+
+/**
  * Directory (and URL) holding the files saved before the first replacement.
  *
  * @param int $attachment_id Attachment ID.
@@ -104,33 +150,33 @@ function lean_images_source_url( $attachment_id ) {
 }
 
 /**
- * Copy the full-size file and every sub-size aside, once, before the first
- * replacement, together with the metadata that describes them.
+ * Copy every file a replacement overwrites aside, together with the metadata
+ * that describes them. The backup keeps the very first state, not an earlier
+ * compression: a later replacement only adds files the backup does not have
+ * yet, which are still untouched.
  *
  * @param int $attachment_id Attachment ID.
  * @return true|WP_Error
  */
 function lean_images_backup( $attachment_id ) {
-	if ( get_post_meta( $attachment_id, LEAN_IMAGES_BACKUP_META, true ) ) {
-		return true; // Keep the very first state, not an earlier compression.
-	}
-
-	$file     = get_attached_file( $attachment_id );
-	$meta     = wp_get_attachment_metadata( $attachment_id );
+	$backup   = get_post_meta( $attachment_id, LEAN_IMAGES_BACKUP_META, true );
+	$known    = $backup ? $backup['files'] : array();
+	$new      = array_values( array_diff( wp_list_pluck( lean_images_replace_targets( $attachment_id ), 'file' ), $known ) );
+	$dir      = dirname( get_attached_file( $attachment_id ) );
 	$location = lean_images_backup_location( $attachment_id );
-	$files    = array( wp_basename( $file ) );
-	foreach ( isset( $meta['sizes'] ) ? $meta['sizes'] : array() as $size ) {
-		$files[] = $size['file'];
+	if ( ! $new ) {
+		return true;
 	}
-	$files = array_values( array_unique( $files ) );
 
 	if ( ! wp_mkdir_p( $location['path'] ) ) {
 		return new WP_Error( 'lean_images_backup_failed', __( 'Could not create the backup folder.', 'lean-images' ), array( 'status' => 500 ) );
 	}
-	foreach ( $files as $name ) {
-		$from = path_join( dirname( $file ), $name );
+	foreach ( $new as $name ) {
+		$from = path_join( $dir, $name );
 		if ( file_exists( $from ) && ! copy( $from, path_join( $location['path'], $name ) ) ) {
-			lean_images_delete_backup( $attachment_id );
+			if ( ! $backup ) {
+				lean_images_delete_backup( $attachment_id );
+			}
 			return new WP_Error( 'lean_images_backup_failed', __( 'Could not back up the current files.', 'lean-images' ), array( 'status' => 500 ) );
 		}
 	}
@@ -139,8 +185,8 @@ function lean_images_backup( $attachment_id ) {
 		$attachment_id,
 		LEAN_IMAGES_BACKUP_META,
 		array(
-			'files' => $files,
-			'meta'  => $meta,
+			'files' => array_merge( $known, $new ),
+			'meta'  => $backup ? $backup['meta'] : wp_get_attachment_metadata( $attachment_id ),
 		)
 	);
 	return true;
@@ -170,6 +216,7 @@ function lean_images_restore( $attachment_id ) {
 
 	wp_update_attachment_metadata( $attachment_id, $backup['meta'] );
 	lean_images_delete_backup( $attachment_id );
+	delete_post_meta( $attachment_id, LEAN_IMAGES_SAVED_META );
 	return true;
 }
 

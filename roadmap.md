@@ -9,6 +9,27 @@ next. Add each feature here when it lands, and each release before you tag it.
   (aardling.com does). Later releases install themselves.
 - Hear back from compress-or-die (OMCC) about the plugin. The e-mail and the
   r/CompressOrDie post went out on 31 October 2026.
+- Bulk compression, suggested on r/CompressOrDie. Everything runs in the open
+  browser tab, so it needs a limit per batch, a queue that survives leaving
+  the page, and a test of what happens when you do.
+
+## 0.4.0 (3 November 2026)
+
+From a r/CompressOrDie discussion about how Lean Images plays with other image
+plugins and bulk regeneration.
+
+- Regenerating thumbnails (Regenerate Thumbnails, `wp media regenerate`) keeps
+  the files Lean Images saved. Before, it rebuilt the full size, or every
+  size, from the original with GD or Imagick. New sizes, such as one a new
+  theme adds, still get made.
+- **Replace this image** overwrites every file in its own format. Sites that
+  save sub-sizes as WebP or AVIF (Modern Image Formats, or the
+  `image_editor_output_format` filter) got a JPEG written into the `.avif`
+  full-size file, and their sub-sizes stayed as they were. WebP and AVIF
+  copies listed under "sources" are replaced too.
+- Leaving the page while it saves asks you to confirm first.
+- The README lists how Lean Images works with Smush, EWWW, Imagify,
+  ShortPixel, Converter for Media, WP Offload Media and CDNs.
 
 ## 0.3.3 (2 November 2026)
 

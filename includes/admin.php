@@ -94,17 +94,9 @@ add_action(
  * @return array
  */
 function lean_images_app_config( $attachment_id ) {
-	$file  = get_attached_file( $attachment_id );
-	$meta  = wp_get_attachment_metadata( $attachment_id );
-	$mime  = get_post_mime_type( $attachment_id );
-	$sizes = array();
-	foreach ( isset( $meta['sizes'] ) ? $meta['sizes'] : array() as $name => $size ) {
-		$sizes[ $name ] = array(
-			'width'  => (int) $size['width'],
-			'height' => (int) $size['height'],
-			'mime'   => isset( $size['mime-type'] ) ? $size['mime-type'] : $mime,
-		);
-	}
+	$file    = get_attached_file( $attachment_id );
+	$meta    = wp_get_attachment_metadata( $attachment_id );
+	$targets = lean_images_replace_targets( $attachment_id );
 
 	/** This filter is documented in wp-admin/includes/image.php */
 	$threshold = (int) apply_filters( 'big_image_size_threshold', 2560, array( (int) $meta['width'], (int) $meta['height'] ), $file, $attachment_id );
@@ -115,11 +107,12 @@ function lean_images_app_config( $attachment_id ) {
 		'pageUrl'         => lean_images_page_url( $attachment_id ),
 		'source'          => array( 'url' => lean_images_source_url( $attachment_id ) ),
 		'current'         => array(
-			'mime'     => $mime,
+			// The format of the full-size file, which can differ from the upload's.
+			'mime'     => $targets ? $targets[0]['mime'] : get_post_mime_type( $attachment_id ),
 			'width'    => (int) $meta['width'],
 			'height'   => (int) $meta['height'],
 			'filesize' => (int) ( empty( $meta['filesize'] ) ? wp_filesize( $file ) : $meta['filesize'] ),
-			'sizes'    => (object) $sizes,
+			'files'    => $targets,
 		),
 		'registeredSizes' => (object) wp_get_registered_image_subsizes(),
 		'threshold'       => $threshold,

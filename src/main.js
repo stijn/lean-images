@@ -355,8 +355,7 @@ function schedule() {
 }
 
 // What every encode needs besides the target dimensions.
-function encodeRequest( keep = state.keep ) {
-	const mime = state.format;
+function encodeRequest( keep = state.keep, mime = state.format ) {
 	return {
 		type: 'encode',
 		mime,
@@ -430,8 +429,14 @@ function renderStats() {
 function renderActions() {
 	const sameFormat = state.format === config.current.mime;
 	ui.replace.disabled = state.busy || ! sameFormat;
+	// Sub-sizes or copies in another format get that format's settings.
+	const otherFormats = [ ...new Set( config.current.files.map( ( file ) => file.mime ) ) ]
+		.filter( ( mime ) => mime !== config.current.mime )
+		.map( ( mime ) => FORMATS[ mime ].label );
 	ui.replaceNote.textContent = sameFormat
-		? `Overwrites the ${ config.current.width } × ${ config.current.height } file and its ${ Object.keys( config.current.sizes ).length } smaller sizes with these settings. URLs stay the same; the old files are backed up.`
+		? `Overwrites the ${ config.current.width } × ${ config.current.height } file and the ${ config.current.files.length - 1 } smaller files made from it with these settings. ${
+			otherFormats.length ? `Files in ${ otherFormats.join( ' and ' ) } use the settings of that format. ` : ''
+		}URLs stay the same; the old files are backed up.`
 		: `Replacing keeps the file format (${ FORMATS[ config.current.mime ]?.label ?? config.current.mime }), so posts that use this image keep working. Pick that format, or save as a new image.`;
 	ui.saveNew.disabled = state.busy;
 	if ( ui.restore ) {
@@ -463,24 +468,19 @@ function newImageTargets() {
 	return targets;
 }
 
-// Exactly the files that exist now, at their current dimensions, so every
-// file name (and every URL in existing posts) stays valid.
+// Exactly the files that exist now, each at its current dimensions and in
+// its current format, so every file name (and every URL in existing posts)
+// stays valid. The full size comes first.
 function replaceTargets() {
 	const { source } = state;
-	const current = config.current;
-	const targets = [ { name: 'full', width: current.width, height: current.height, crop: null } ];
-	for ( const [ name, size ] of Object.entries( current.sizes ) ) {
-		if ( size.mime !== current.mime ) {
-			continue;
-		}
+	return config.current.files.map( ( file ) => {
 		let crop = null;
-		if ( Math.abs( size.width / size.height - source.width / source.height ) > 0.01 ) {
-			const dims = imageResizeDimensions( source.width, source.height, size.width, size.height, true );
+		if ( Math.abs( file.width / file.height - source.width / source.height ) > 0.01 ) {
+			const dims = imageResizeDimensions( source.width, source.height, file.width, file.height, true );
 			crop = dims ? { x: dims.srcX, y: dims.srcY, w: dims.srcW, h: dims.srcH } : null;
 		}
-		targets.push( { name, width: size.width, height: size.height, crop } );
-	}
-	return targets;
+		return { name: file.size, file: file.file, width: file.width, height: file.height, mime: file.mime, crop };
+	} );
 }
 
 async function save( mode ) {
@@ -491,34 +491,39 @@ async function save( mode ) {
 	const targets = mode === 'replace' ? replaceTargets() : newImageTargets();
 	// EXIF, XMP and IPTC go into the full size only; the colour profile goes
 	// everywhere because the pixels depend on it.
-	const fullRequest = encodeRequest();
-	const subRequest = encodeRequest( { ...METADATA_DEFAULTS, icc: state.keep.icc } );
-	const extension = FORMATS[ fullRequest.mime ].extension;
+	const subKeep = { ...METADATA_DEFAULTS, icc: state.keep.icc };
 	const form = new FormData();
 	const names = {};
 	const encoded = new Map();
 
 	setBusy( true );
+	// Leaving now would throw away the files encoded so far, so ask first.
+	window.addEventListener( 'beforeunload', confirmLeave );
 	try {
 		for ( const [ index, target ] of targets.entries() ) {
 			setStatus( `Encoding ${ target.name } (${ index + 1 }/${ targets.length })…` );
-			const request = index === 0 ? fullRequest : subRequest;
-			const key = JSON.stringify( [ index === 0, target.width, target.height, target.crop ] );
+			const request = encodeRequest( index === 0 ? state.keep : subKeep, target.mime ?? state.format );
+			const key = JSON.stringify( [ index === 0, request.mime, target.width, target.height, target.crop ] );
 			if ( ! encoded.has( key ) ) {
 				const { buffer } = await callWorker( { ...request, width: target.width, height: target.height, crop: target.crop } );
 				encoded.set( key, new Blob( [ buffer ], { type: request.mime } ) );
 			}
-			const field = index === 0 ? 'full' : `sub_${ index }`;
-			if ( index > 0 ) {
-				names[ field ] = target.name;
+			let field = `file_${ index }`;
+			if ( mode === 'new' ) {
+				field = index === 0 ? 'full' : `sub_${ index }`;
+				if ( index > 0 ) {
+					names[ field ] = target.name;
+				}
 			}
-			form.append( field, encoded.get( key ), `${ field }.${ extension }` );
+			form.append( field, encoded.get( key ), `${ field }.${ FORMATS[ request.mime ].extension }` );
 		}
 		form.append( 'mode', mode );
 		form.append( 'sizes', JSON.stringify( names ) );
+		form.append( 'files', JSON.stringify( targets.map( ( target ) => target.file ) ) );
 
 		setStatus( 'Uploading…' );
 		const result = await rest( 'save', form );
+		window.removeEventListener( 'beforeunload', confirmLeave );
 		if ( mode === 'replace' ) {
 			window.location.assign( `${ config.pageUrl }&done=replaced` );
 			return;
@@ -533,8 +538,14 @@ async function save( mode ) {
 	} catch ( error ) {
 		setStatus( error.message, 'error' );
 	} finally {
+		window.removeEventListener( 'beforeunload', confirmLeave );
 		setBusy( false );
 	}
+}
+
+function confirmLeave( event ) {
+	event.preventDefault();
+	event.returnValue = ''; // Safari before 17 and older Chrome.
 }
 
 async function restore() {

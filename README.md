@@ -19,15 +19,38 @@ next.
 - **Save as new image**: a new attachment in any format, with every registered
   sub-size encoded in the browser using the same settings and the exact
   dimensions WordPress would have used.
-- **Replace this image**: same format, same dimensions, same file names, so
-  every existing post keeps working. The previous files are backed up to
-  `uploads/lean-images-backup/<id>/` and can be restored from the same screen.
-  Backups are removed when the attachment is deleted.
+- **Replace this image**: same formats, same dimensions, same file names, so
+  every existing post keeps working. That covers every file WordPress serves
+  for the image: the full size, each sub-size and the WebP or AVIF copies
+  that plugins such as Modern Image Formats add. A file in another format than
+  the one you picked gets the settings of its own format. The previous files
+  are backed up to `uploads/lean-images-backup/<id>/` and can be restored from
+  the same screen. Backups are removed when the attachment is deleted.
+- Leaving the page while it saves asks you to confirm first. A save that stops
+  halfway changes nothing on the server.
 - Settings are remembered per browser; **Reset settings** brings back the
   defaults.
 
 WordPress never re-encodes these files with GD or Imagick, which would undo the
-tuning.
+tuning. That includes bulk tools such as Regenerate Thumbnails and
+`wp media regenerate`: they keep the files Lean Images saved and only make the
+sizes those files do not cover, such as a size a new theme adds. Restoring the
+backup hands the image back to WordPress.
+
+## Other image plugins
+
+Lean Images saves through `wp_update_attachment_metadata()` only. It never
+calls `wp_generate_attachment_metadata()`, the hook most optimisers use to
+compress new uploads.
+
+- Smush, EWWW, Imagify and ShortPixel do not compress Lean Images' files
+  again by themselves. Their bulk tools can, if you run them.
+- Converter for Media makes its own WebP and AVIF copies of the new files and
+  serves those instead.
+- WP Offload Media uploads the new files again. Not tested with "Remove files
+  from server" on, where the editor may not be able to read the original.
+- CDNs and page caches keep serving the old file of a replaced image until you
+  purge them or their cache expires, because the URL stays the same.
 
 ## Every option
 
